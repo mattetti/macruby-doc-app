@@ -38,24 +38,23 @@ class Application
   end
   
   def search_button
-    @search_button ||= button(:title => "Search", :layout => {:align => :center}).on_action do
-      NSLog("searching for #{@search_box.to_s}")
-      ref = DocSet.search(@search_box.to_s)
-      if ref.respond_to?(:full_path)
-        @web_view.url = ref.full_path
-        search_box.text = ''
-      else
-        alert :message => "No documentation found", :info => "Sorry, we couldn't find anything about #{@search_box.to_s}, please use another term and try again."
-        search_box.text = ''
-      end
-    end
+    @search_button ||= button(:title => "Search", :layout => {:align => :center}).on_action(&method(:perform_search))
   end
   
   def search_box
-    @search_box ||= text_field(:layout => {:expand => :width, :align => :center})
-    def @search_box.doCommandBySelector(selector); NSLog('selector: ' + selector.inspect); end
-    # def @search_box.controlTextDidEndEditing(notification); NSLog( 'notification: ' + notification.inspect); end
-    @search_box
+    @search_box ||= text_field(:layout => {:expand => :width, :align => :center}).on_action(&method(:perform_search))
+  end
+  
+  def perform_search(sender)
+    NSLog("searching for #{@search_box.to_s}")
+    ref = DocSet.search(@search_box.to_s)
+    if ref.respond_to?(:full_path)
+      @web_view.url = ref.full_path
+      search_box.text = ''
+    else
+      alert :message => "No documentation found", :info => "Sorry, we couldn't find anything about #{@search_box.to_s}, please use another term and try again."
+      search_box.text = ''
+    end
   end
   
   # Makes the search box the default item on focus
