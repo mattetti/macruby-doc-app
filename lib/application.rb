@@ -1,5 +1,6 @@
 require 'hotcocoa'
 require "#{File.dirname(__FILE__)}/docset.rb"
+require "#{File.dirname(__FILE__)}/hotcocoa_doc.rb"
 framework 'webkit'
 framework 'QuartzCore'
 framework 'ApplicationServices'
@@ -18,7 +19,6 @@ class Application
         win << doc_view
         win << search_bar
         search_box.delegate = app
-        
         set_responders(win)
         win.will_close { exit }
       end
@@ -27,6 +27,7 @@ class Application
     
   def search_bar
     @search_bar ||= layout_view(:mode => :horizontal, :frame => [0, 0, 0, 40], :layout => {:expand => :width, :bottom_padding => 2}, :margin => 0, :spacing => 0) do |hview|
+      hview << hotcocoa_button
       hview << search_button
       hview << search_box
     end
@@ -34,15 +35,25 @@ class Application
   
   def doc_view
     @web_view ||= web_view( :url    => LOCAL_DOC_INDEX,
-                            :layout => {:expand =>  [:width, :height]} )
+                            :layout => {:expand =>  [:width, :height]} ) do |wv| 
+      wv.setPolicyDelegate(PolicyDelegate.new(self))
+    end
   end
   
   def search_button
     @search_button ||= button(:title => "Search", :layout => {:align => :center}).on_action(&method(:perform_search))
   end
+
+  def hotcocoa_button
+    @hotcoca_button ||= button(:title => "HotCocoa Mappin", :layout => {:align => :center}).on_action(&method(:display_hotcocoa_index))
+  end
   
   def search_box
     @search_box ||= text_field(:layout => {:expand => :width, :align => :center}).on_action(&method(:perform_search))
+  end
+  
+  def display_hotcocoa_index(sender)
+    doc_view.mainFrame.loadHTMLString(HotCocoaDoc.mapping_index, baseURL:nil)
   end
   
   def perform_search(sender)
@@ -72,7 +83,6 @@ class Application
       true
   end
   
-  
   # file/open
   def on_open(menu)
   end
@@ -95,6 +105,40 @@ class Application
   
   # window/bring_all_to_front
   def on_bring_all_to_front(menu)
+  end
+end
+
+class PolicyDelegate
+  
+  attr_reader :app
+  
+  def initialize(app)
+    @app = app
+  end
+  
+  def webView(view, decidePolicyForNavigationAction:action, request:request, frame:frame, decisionListener:listener)
+    action_url = action.objectForKey(WebActionOriginalURLKey).absoluteString
+    case action.objectForKey(WebActionNavigationTypeKey)
+    when WebNavigationTypeLinkClicked
+      if action_url =~ /hotcocoa:(.*)/
+        if $1 == '_index'
+          view.mainFrame.loadHTMLString(HotCocoaDoc.mapping_index, baseURL:nil)
+        else
+          view.mainFrame.loadHTMLString(HotCocoaDoc.mapping_documentation_for($1.intern), baseURL:nil)
+        end
+        listener.ignore
+      elsif action_url =~ /search:(.*)/
+        app.search_box.text = $1
+        app.perform_search(nil)
+        listener.ignore
+      else
+        listener.use
+      end
+    when WebNavigationTypeOther
+      listener.use
+    else
+      listener.use
+    end
   end
 end
 
