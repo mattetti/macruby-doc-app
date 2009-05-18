@@ -45,7 +45,7 @@ class Application
   end
 
   def hotcocoa_button
-    @hotcoca_button ||= button(:title => "HotCocoa Mappin", :layout => {:align => :center}).on_action(&method(:display_hotcocoa_index))
+    @hotcoca_button ||= button(:title => "HotCocoa Mappings", :layout => {:align => :center}).on_action(&method(:display_hotcocoa_index))
   end
   
   def search_box
@@ -53,7 +53,7 @@ class Application
   end
   
   def display_hotcocoa_index(sender)
-    doc_view.mainFrame.loadHTMLString(HotCocoaDoc.mapping_index, baseURL:nil)
+    doc_view.mainFrame.loadHTMLString(HotCocoaDoc.render_index, baseURL:nil)
   end
   
   def perform_search(sender)
@@ -122,14 +122,17 @@ class PolicyDelegate
     when WebNavigationTypeLinkClicked
       if action_url =~ /hotcocoa:(.*)/
         if $1 == '_index'
-          view.mainFrame.loadHTMLString(HotCocoaDoc.mapping_index, baseURL:nil)
+          view.mainFrame.loadHTMLString(HotCocoaDoc.render_index, baseURL:nil)
         else
-          view.mainFrame.loadHTMLString(HotCocoaDoc.mapping_documentation_for($1.intern), baseURL:nil)
+          view.mainFrame.loadHTMLString(HotCocoaDoc.new($1.intern).render, baseURL:nil)
         end
         listener.ignore
       elsif action_url =~ /search:(.*)/
         app.search_box.text = $1
         app.perform_search(nil)
+        listener.ignore
+      elsif action_url =~ /open:(.*)/
+        `open #{$1}`
         listener.ignore
       else
         listener.use
