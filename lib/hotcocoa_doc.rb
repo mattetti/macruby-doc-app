@@ -53,13 +53,28 @@ class HotCocoaDoc
     else
       constants=''
     end
-    unless custom_methods.empty?
+    if custom_methods && !custom_methods.empty?
       custom_methods_html = %{
         <h2>Custom methods</h2>
         <div>#{custom_methods.join(", ")}</div>
       }
     else
       custom_methods = ''
+    end
+    if delegate_structures.empty?
+      delegates = ""
+    else
+      delegates = "<h2>Delegate Methods</h2><ul>"
+      delegate_structures.keys.sort.each do |selector|
+        mapping = delegate_structures[selector]
+        if mapping[:parameters]
+          param_list = "| #{mapping[:parameters].join(", ")} |"
+        else
+          param_list = ''
+        end
+        delegates << "<li>#{mapping[:to]} { #{param_list} ... } #{mapping[:required] ? '<span style="color:ff0000">*</span>' : ''}</li>"
+      end
+      delegates << "</ul>"
     end
     %{
       <html>
@@ -70,6 +85,7 @@ class HotCocoaDoc
       <div class="file_info">Mapping file: <a href="open:#{mapping_file}">#{mapping_id}.rb</a></div>
       #{defaults}
       #{constants}
+      #{delegates}
       #{custom_methods_html}
       </html>
     }
@@ -107,6 +123,10 @@ class HotCocoaDoc
     
     def constants_structures
       @constants_structures ||= parse_constants_structures
+    end
+    
+    def delegate_structures
+      @delegates_structures ||= control_module.delegate_map
     end
     
     def build_mapping_structure
@@ -186,7 +206,11 @@ class HotCocoaDoc
           '__var__'
         end
       when :array
-        %{[#{element_sexp[1].map{|item_sexp|to_source(item_sexp)}.join(', ')}]}
+        if element_sexp[1] == nil
+          '[]'
+        else
+          %{[#{element_sexp[1].map{|item_sexp|to_source(item_sexp)}.join(', ')}]}
+        end
       else
         NSLog "Unhandled element:"
         NSLog element_sexp.inspect
