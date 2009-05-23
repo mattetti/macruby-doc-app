@@ -2,8 +2,6 @@ require 'hotcocoa'
 require "#{File.dirname(__FILE__)}/docset.rb"
 require "#{File.dirname(__FILE__)}/hotcocoa_doc.rb"
 framework 'webkit'
-framework 'QuartzCore'
-framework 'ApplicationServices'
 
 
 class Application
@@ -15,16 +13,19 @@ class Application
     application :name => "Cocoa Doc" do |app|
       app.delegate = self
       @main_window = window :frame => [100, 100, 825, 500], :title => "CocoaDoc" do |win|
-        win << label(:text => "Cocoa Documentation", :layout => {:start => false})
+        win << label(:text => "Cocoa & HotCocoa Documentation", :layout => {:start => false})
         win << doc_view
         win << search_bar
         search_box.delegate = app
-        set_responders(win)
+        set_responders(win)        
         win.will_close { exit }
       end
     end
   end
     
+    
+  # layout view including the hotcocoa mappings button
+  # as well as the cocoa search field and button
   def search_bar
     @search_bar ||= layout_view(:mode => :horizontal, :frame => [0, 0, 0, 40], :layout => {:expand => :width, :bottom_padding => 2}, :margin => 0, :spacing => 0) do |hview|
       hview << hotcocoa_button
@@ -33,6 +34,9 @@ class Application
     end
   end
   
+  
+  # a webview displaying the result of the search
+  # the webview sets a delegation to deal with various actions
   def doc_view
     @web_view ||= web_view( :url    => LOCAL_DOC_INDEX,
                             :layout => {:expand =>  [:width, :height]} ) do |wv| 
@@ -56,15 +60,23 @@ class Application
     doc_view.mainFrame.loadHTMLString(HotCocoaDoc.render_index, baseURL:nil)
   end
   
+  # performing a search using the DocSet class
+  # to work properly, the user needs to have the macosx developer tools installed.
   def perform_search(sender)
     NSLog("searching for #{@search_box.to_s}")
-    ref = DocSet.search(@search_box.to_s)
-    if ref.respond_to?(:full_path)
-      @web_view.url = ref.full_path
-      search_box.text = ''
+    begin
+      refs = DocSet.search(@search_box.to_s)
+    rescue DocSetError => error_message
+      alert(:message => "Missing documentation", :info => error_message.to_s) 
     else
-      alert :message => "No documentation found", :info => "Sorry, we couldn't find anything about #{@search_box.to_s}, please use another term and try again."
-      search_box.text = ''
+      # TODO fill up the table view with all the results
+      if refs.first.respond_to?(:full_path)
+        @web_view.url = refs.first.full_path
+        search_box.text = ''
+      else
+        alert :message => "No documentation found", :info => "Sorry, we couldn't find anything about #{@search_box.to_s}, please use another term and try again."
+        search_box.text = ''
+      end
     end
   end
   
@@ -75,12 +87,6 @@ class Application
     win.makeFirstResponder(search_box)
     search_box.nextKeyView    = search_button
     search_button.nextKeyView = search_box
-  end
-  
-  def control(textView, doCommandBySelector: commandSelector)
-      result = false
-      NSLog commandSelector.inspect
-      true
   end
   
   # file/open
