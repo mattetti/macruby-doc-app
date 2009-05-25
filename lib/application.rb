@@ -1,6 +1,8 @@
 require 'hotcocoa'
 require "#{File.dirname(__FILE__)}/docset.rb"
 require "#{File.dirname(__FILE__)}/hotcocoa_doc.rb"
+require "#{File.dirname(__FILE__)}/result_store.rb"
+
 framework 'webkit'
 
 
@@ -15,6 +17,7 @@ class Application
       @main_window = window :frame => [100, 100, 825, 500], :title => "CocoaDoc" do |win|
         win << label(:text => "Cocoa & HotCocoa Documentation", :layout => {:start => false})
         win << doc_view
+        win << result_table
         win << search_bar
         search_box.delegate = app
         set_responders(win)        
@@ -60,6 +63,27 @@ class Application
     doc_view.mainFrame.loadHTMLString(HotCocoaDoc.render_index, baseURL:nil)
   end
   
+  def result_store
+    @result_store ||= ResultStore.new([])
+  end
+  
+  def result_table
+    @result_table ||= layout_view :frame => [0, 0, 0, 0], :layout => {:expand => [:width, :height]}, :margin => 0, :spacing => 0 do |view|
+                        view << scroll_view(:layout => {:expand => [:width, :height]}) do |scroll|
+                          @result_table_view = table_view( 
+                            :columns => [
+                              column(:id => :language,    :title => "Language"), 
+                              column(:id => :type,        :title => "Type"),
+                              column(:id => :klass,       :title => "Class")
+                              ]
+                          )
+                          @result_table_view.data = result_store
+                          @result_table_view.tableColumns.each{|column| column.editable = false}
+                          scroll << @result_table_view
+                        end
+                      end
+  end
+  
   # performing a search using the DocSet class
   # to work properly, the user needs to have the macosx developer tools installed.
   def perform_search(sender)
@@ -69,7 +93,8 @@ class Application
     rescue DocSetError => error_message
       alert(:message => "Missing documentation", :info => error_message.to_s) 
     else
-      # TODO fill up the table view with all the results
+      # loading the table view
+      result_store.add_results(@result_table_view, refs)
       if refs.first.respond_to?(:full_path)
         @web_view.url = refs.first.full_path
         search_box.text = ''
