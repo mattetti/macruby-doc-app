@@ -79,6 +79,7 @@ class Application
                           )
                           @result_table_view.data = result_store
                           @result_table_view.tableColumns.each{|column| column.editable = false}
+                          @result_table_view.delegate = self
                           scroll << @result_table_view
                         end
                       end
@@ -112,6 +113,12 @@ class Application
     win.makeFirstResponder(search_box)
     search_box.nextKeyView    = search_button
     search_button.nextKeyView = search_box
+  end
+
+
+  # called when the user selects a new row
+  def tableViewSelectionDidChange(notification)
+    @web_view.url = result_store.data[@result_table_view.selectedRow].full_path
   end
   
   # file/open

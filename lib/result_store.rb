@@ -1,5 +1,7 @@
 class ResultStore < HotCocoa::TableDataSource
   
+  attr_accessor :data
+  
   def add_results(sender, results)
     # reseting the table view data
     @data = []
