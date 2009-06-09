@@ -3,8 +3,7 @@ require "#{File.dirname(__FILE__)}/docset.rb"
 require "#{File.dirname(__FILE__)}/hotcocoa_doc.rb"
 require "#{File.dirname(__FILE__)}/result_store.rb"
 
-framework 'webkit'
-
+framework 'WebKit'
 
 class Application
   include HotCocoa
